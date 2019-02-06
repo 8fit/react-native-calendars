@@ -1,7 +1,8 @@
 import React, {Component} from 'react';
 import {
   View,
-  ViewPropTypes
+  ViewPropTypes,
+  ActivityIndicator
 } from 'react-native';
 import PropTypes from 'prop-types';
 
@@ -12,8 +13,6 @@ import styleConstructor from './style';
 import Day from './day/basic';
 import UnitDay from './day/period';
 import MultiDotDay from './day/multi-dot';
-import MultiPeriodDay from './day/multi-period';
-import SingleDay from './day/custom';
 import CalendarHeader from './header';
 import shouldComponentUpdate from './updater';
 
@@ -41,7 +40,7 @@ class Calendar extends Component {
     // If firstDay=1 week starts from Monday. Note that dayNames and dayNamesShort should still start from Sunday.
     firstDay: PropTypes.number,
 
-    // Date marking style [simple/period/multi-dot/multi-period]. Default = 'simple'
+    // Date marking style [simple/period]. Default = 'simple'
     markingType: PropTypes.string,
 
     // Hide month navigation arrows. Default = false
@@ -53,8 +52,6 @@ class Calendar extends Component {
 
     // Handler which gets executed on day press. Default = undefined
     onDayPress: PropTypes.func,
-    // Handler which gets executed on day long press. Default = undefined
-    onDayLongPress: PropTypes.func,
     // Handler which gets executed when visible month changes in calendar. Default = undefined
     onMonthChange: PropTypes.func,
     onVisibleMonthsChange: PropTypes.func,
@@ -94,7 +91,6 @@ class Calendar extends Component {
     this.updateMonth = this.updateMonth.bind(this);
     this.addMonth = this.addMonth.bind(this);
     this.pressDay = this.pressDay.bind(this);
-    this.longPressDay = this.longPressDay.bind(this);
     this.shouldComponentUpdate = shouldComponentUpdate;
   }
 
@@ -126,7 +122,7 @@ class Calendar extends Component {
     });
   }
 
-  _handleDayInteraction(date, interaction) {
+  pressDay(date) {
     const day = parseDate(date);
     const minDate = parseDate(this.props.minDate);
     const maxDate = parseDate(this.props.maxDate);
@@ -135,25 +131,17 @@ class Calendar extends Component {
       if (shouldUpdateMonth) {
         this.updateMonth(day);
       }
-      if (interaction) {
-        interaction(xdateToData(day));
+      if (this.props.onDayPress) {
+        this.props.onDayPress(xdateToData(day));
       }
     }
-  }
-
-  pressDay(date) {
-    this._handleDayInteraction(date, this.props.onDayPress);
-  }
-
-  longPressDay(date) {
-    this._handleDayInteraction(date, this.props.onDayLongPress);
   }
 
   addMonth(count) {
     this.updateMonth(this.state.currentMonth.clone().addMonths(count, true));
   }
 
-  renderDay(day, id) {
+  renderDay(day, id, indicator) {
     const minDate = parseDate(this.props.minDate);
     const maxDate = parseDate(this.props.maxDate);
     let state = '';
@@ -165,28 +153,34 @@ class Calendar extends Component {
       state = 'disabled';
     } else if (dateutils.sameDate(day, XDate())) {
       state = 'today';
+    } else if (dateutils.isGTE(day, XDate())) {
+      state = 'future';
     }
-
+    let dayComp;
     if (!dateutils.sameMonth(day, this.state.currentMonth) && this.props.hideExtraDays) {
-      return (<View key={id} style={{flex: 1}}/>);
-    }
-
-    const DayComp = this.getDayComponent();
-    const date = day.getDate();
-    return (
-      <View style={{flex: 1, alignItems: 'center'}} key={id}>
+      if (this.props.markingType === 'period') {
+        dayComp = (<View key={id} style={{flex: 1}}/>);
+      } else {
+        dayComp = (<View key={id} style={{width: 32}}/>);
+      }
+    } else {
+      const DayComp = this.getDayComponent();
+      const date = day.getDate();
+      dayComp = (
         <DayComp
+          key={id}
           state={state}
           theme={this.props.theme}
           onPress={this.pressDay}
-          onLongPress={this.longPressDay}
           date={xdateToData(day)}
           marking={this.getDateMarking(day)}
+          showIndicator={indicator}
         >
           {date}
         </DayComp>
-      </View>
-    );
+      );
+    }
+    return dayComp;
   }
 
   getDayComponent() {
@@ -199,10 +193,6 @@ class Calendar extends Component {
       return UnitDay;
     case 'multi-dot':
       return MultiDotDay;
-    case 'multi-period':
-      return MultiPeriodDay;
-    case 'custom':
-      return SingleDay;
     default:
       return Day;
     }
@@ -224,10 +214,10 @@ class Calendar extends Component {
     return <Day key={`week-${weekNumber}`} theme={this.props.theme} marking={{disableTouchEvent: true}} state='disabled'>{weekNumber}</Day>;
   }
 
-  renderWeek(days, id) {
+  renderWeek(days, id, indicator) {
     const week = [];
     days.forEach((day, id2) => {
-      week.push(this.renderDay(day, id2));
+      week.push(this.renderDay(day, id2, indicator));
     }, this);
 
     if (this.props.showWeekNumbers) {
@@ -238,19 +228,19 @@ class Calendar extends Component {
   }
 
   render() {
+    let indicator;
+    const lastDayOfMonth = this.state.currentMonth.clone().addMonths(1, true).setDate(1).addDays(-1).toString('yyyy-MM-dd');
+    if (
+      this.props.displayLoadingIndicator &&
+      !(this.props.markedDates && this.props.markedDates[lastDayOfMonth]) &&
+      !(Math.ceil(this.state.currentMonth.diffMonths(XDate())) < 0)
+    ) {
+      indicator = true;
+    }
     const days = dateutils.page(this.state.currentMonth, this.props.firstDay);
     const weeks = [];
     while (days.length) {
-      weeks.push(this.renderWeek(days.splice(0, 7), weeks.length));
-    }
-    let indicator;
-    const current = parseDate(this.props.current);
-    if (current) {
-      const lastMonthOfDay = current.clone().addMonths(1, true).setDate(1).addDays(-1).toString('yyyy-MM-dd');
-      if (this.props.displayLoadingIndicator &&
-          !(this.props.markedDates && this.props.markedDates[lastMonthOfDay])) {
-        indicator = true;
-      }
+      weeks.push(this.renderWeek(days.splice(0, 7), weeks.length, indicator));
     }
     return (
       <View style={[this.style.container, this.props.style]}>
@@ -259,7 +249,7 @@ class Calendar extends Component {
           hideArrows={this.props.hideArrows}
           month={this.state.currentMonth}
           addMonth={this.addMonth}
-          showIndicator={indicator}
+          showIndicator={false}
           firstDay={this.props.firstDay}
           renderArrow={this.props.renderArrow}
           monthFormat={this.props.monthFormat}
@@ -268,7 +258,8 @@ class Calendar extends Component {
           onPressArrowLeft={this.props.onPressArrowLeft}
           onPressArrowRight={this.props.onPressArrowRight}
         />
-        <View style={this.style.monthView}>{weeks}</View>
+          {weeks}
+          {indicator && <View style={this.style.overlay}><ActivityIndicator color="#35444D" /></View>}
       </View>);
   }
 }

@@ -16,7 +16,7 @@ export default function(theme={}) {
     monthText: {
       fontSize: appStyle.textMonthFontSize,
       fontFamily: appStyle.textMonthFontFamily,
-      fontWeight: appStyle.textMonthFontWeight,
+      fontWeight: '300',
       color: appStyle.monthTextColor,
       margin: 10
     },

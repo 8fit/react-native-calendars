@@ -11,9 +11,6 @@ export default function getStyle(theme={}) {
       paddingRight: 5,
       backgroundColor: appStyle.calendarBackground
     },
-    monthView: {
-      backgroundColor: appStyle.calendarBackground
-    },
     week: {
       marginTop: 7,
       marginBottom: 7,

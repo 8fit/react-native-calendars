@@ -1,12 +1,11 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
+//import _ from 'lodash';
 import {
   TouchableWithoutFeedback,
   Text,
   View
 } from 'react-native';
-import {shouldUpdate} from '../../../component-updater';
-import isEqual from 'lodash.isequal';
 
 import * as defaultStyle from '../../../style';
 import styleConstructor from './style';
@@ -21,7 +20,6 @@ class Day extends Component {
     marking: PropTypes.any,
 
     onPress: PropTypes.func,
-    onLongPress: PropTypes.func,
     date: PropTypes.object,
 
     markingExists: PropTypes.bool,
@@ -33,26 +31,26 @@ class Day extends Component {
     this.style = styleConstructor(props.theme);
     this.markingStyle = this.getDrawingStyle(props.marking || []);
     this.onDayPress = this.onDayPress.bind(this);
-    this.onDayLongPress = this.onDayLongPress.bind(this);
   }
 
   onDayPress() {
     this.props.onPress(this.props.date);
   }
 
-  onDayLongPress() {
-    this.props.onLongPress(this.props.date);
-  }
-
   shouldComponentUpdate(nextProps) {
     const newMarkingStyle = this.getDrawingStyle(nextProps.marking);
 
-    if (!isEqual(this.markingStyle, newMarkingStyle)) {
+    if (JSON.stringify(this.markingStyle) !== JSON.stringify(newMarkingStyle)) {
       this.markingStyle = newMarkingStyle;
       return true;
     }
 
-    return shouldUpdate(this.props, nextProps, ['state', 'children', 'onPress', 'onLongPress']);
+    return ['state', 'children'].reduce((prev, next) => {
+      if (prev || nextProps[next] !== this.props[next]) {
+        return true;
+      }
+      return prev;
+    }, false);
   }
 
   getDrawingStyle(marking) {
@@ -123,7 +121,6 @@ class Day extends Component {
     if (this.props.state === 'disabled') {
       textStyle.push(this.style.disabledText);
     } else if (this.props.state === 'today') {
-      containerStyle.push(this.style.today);
       textStyle.push(this.style.todayText);
     }
 
@@ -192,9 +189,7 @@ class Day extends Component {
     }
 
     return (
-      <TouchableWithoutFeedback
-        onPress={this.onDayPress}
-        onLongPress={this.onDayLongPress}>
+      <TouchableWithoutFeedback onPress={this.onDayPress}>
         <View style={this.style.wrapper}>
           {fillers}
           <View style={containerStyle}>

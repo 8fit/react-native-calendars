@@ -6,60 +6,79 @@ import {
 } from 'react-native';
 import PropTypes from 'prop-types';
 
-import {shouldUpdate} from '../../../component-updater';
-
 import styleConstructor from './style';
 
 class Day extends Component {
   static propTypes = {
     // TODO: disabled props should be removed
-    state: PropTypes.oneOf(['disabled', 'today', '']),
+    state: PropTypes.oneOf(['disabled', 'today', 'future', '']),
 
     // Specify theme properties to override specific styles for calendar parts. Default = {}
     theme: PropTypes.object,
     marking: PropTypes.any,
     onPress: PropTypes.func,
-    onLongPress: PropTypes.func,
-    date: PropTypes.object
+    date: PropTypes.object,
+    showIndicator: PropTypes.bool
   };
 
   constructor(props) {
     super(props);
     this.style = styleConstructor(props.theme);
     this.onDayPress = this.onDayPress.bind(this);
-    this.onDayLongPress = this.onDayLongPress.bind(this);
   }
 
   onDayPress() {
     this.props.onPress(this.props.date);
   }
 
-  onDayLongPress() {
-    this.props.onLongPress(this.props.date);
-  }
-
   shouldComponentUpdate(nextProps) {
-    return shouldUpdate(this.props, nextProps, ['state', 'children', 'marking', 'onPress', 'onLongPress']);
+    const changed = ['state', 'children', 'marking', 'onPress'].reduce((prev, next) => {
+      if (prev) {
+        return prev;
+      } else if (nextProps[next] !== this.props[next]) {
+        return next;
+      }
+      return prev;
+    }, false);
+    if (changed === 'marking') {
+      let markingChanged = false;
+      if (this.props.marking && nextProps.marking) {
+        markingChanged = (!(
+          this.props.marking.marking === nextProps.marking.marking
+          && this.props.marking.selected === nextProps.marking.selected
+          && this.props.marking.disabled === nextProps.marking.disabled
+          && this.props.marking.dots === nextProps.marking.dots));
+      } else {
+        markingChanged = true;
+      }
+      // console.log('marking changed', markingChanged);
+      return markingChanged;
+    } else {
+      // console.log('changed', changed);
+      return !!changed;
+    }
   }
 
   renderDots(marking) {
-    const baseDotStyle = [this.style.dot, this.style.visibleDot];
-    if (marking.dots && Array.isArray(marking.dots) && marking.dots.length > 0) {
-      // Filter out dots so that we we process only those items which have key and color property
-      const validDots = marking.dots.filter(d => (d && d.color));
-      return validDots.map((dot, index) => {
-        return (
-          <View key={dot.key ? dot.key : index} style={[baseDotStyle,
-            { backgroundColor: marking.selected && dot.selectedDotColor ? dot.selectedDotColor : dot.color}]}/>
-        );
-      });
+    const loadingLegend = [this.props.showIndicator ? this.style.loadingLegend : {}];
+    if (this.props.state === 'future') {
+      return <View style={[this.style.futureDayLegend, loadingLegend]} />;
     }
-    return;
+    if (marking.dots && Array.isArray(marking.dots) && marking.dots.length > 0) {
+      if (marking.dots.length === 1) {
+        const { type } = marking.dots[0];
+        return <View key={type} style={this.style[`${type}OnlyLegend`]}/>;
+      }
+      return [<View key='meal' style={this.style.mealHalfLegend}/>, <View key='workout' style={this.style.workoutHalfLegend}/>];
+    }
+    return <View style={[this.style.noActivityLegend, loadingLegend]} />;
   }
 
   render() {
     const containerStyle = [this.style.base];
     const textStyle = [this.style.text];
+    const textPillStyle = [this.style.pill];
+    const loadingLegend = [this.props.showIndicator ? this.style.loadingLegend : {}];
 
     const marking = this.props.marking || {};
     const dot = this.renderDots(marking);
@@ -67,22 +86,18 @@ class Day extends Component {
     if (marking.selected) {
       containerStyle.push(this.style.selected);
       textStyle.push(this.style.selectedText);
-      if (marking.selectedColor) {
-        containerStyle.push({backgroundColor: marking.selectedColor});
-      }
     } else if (typeof marking.disabled !== 'undefined' ? marking.disabled : this.props.state === 'disabled') {
       textStyle.push(this.style.disabledText);
     } else if (this.props.state === 'today') {
-      containerStyle.push(this.style.today);
       textStyle.push(this.style.todayText);
+      textPillStyle.push(this.style.todayPill);
     }
     return (
-      <TouchableOpacity
-        style={containerStyle}
-        onPress={this.onDayPress}
-        onLongPress={this.onDayLongPress}>
-        <Text allowFontScaling={false} style={textStyle}>{String(this.props.children)}</Text>
-        <View style={{flexDirection: 'row'}}>{dot}</View>
+      <TouchableOpacity disabled style={containerStyle} onPress={this.onDayPress}>
+        <View style={[textPillStyle, loadingLegend]}><Text allowFontScaling={false} style={textStyle}>{String(this.props.children)}</Text></View>
+        <View style={this.style.legendContainer}>
+          <View style={{flexDirection: 'column'}}>{dot}</View>
+        </View>
       </TouchableOpacity>
     );
   }

@@ -5,7 +5,6 @@ import {
   View
 } from 'react-native';
 import PropTypes from 'prop-types';
-import {shouldUpdate} from '../../../component-updater';
 
 import styleConstructor from './style';
 
@@ -18,7 +17,6 @@ class Day extends Component {
     theme: PropTypes.object,
     marking: PropTypes.any,
     onPress: PropTypes.func,
-    onLongPress: PropTypes.func,
     date: PropTypes.object
   };
 
@@ -26,18 +24,38 @@ class Day extends Component {
     super(props);
     this.style = styleConstructor(props.theme);
     this.onDayPress = this.onDayPress.bind(this);
-    this.onDayLongPress = this.onDayLongPress.bind(this);
   }
 
   onDayPress() {
     this.props.onPress(this.props.date);
   }
-  onDayLongPress() {
-    this.props.onLongPress(this.props.date);
-  }
 
   shouldComponentUpdate(nextProps) {
-    return shouldUpdate(this.props, nextProps, ['state', 'children', 'marking', 'onPress', 'onLongPress']);
+    const changed = ['state', 'children', 'marking', 'onPress'].reduce((prev, next) => {
+      if (prev) {
+        return prev;
+      } else if (nextProps[next] !== this.props[next]) {
+        return next;
+      }
+      return prev;
+    }, false);
+    if (changed === 'marking') {
+      let markingChanged = false;
+      if (this.props.marking && nextProps.marking) {
+        markingChanged = (!(
+          this.props.marking.marked === nextProps.marking.marked
+          && this.props.marking.selected === nextProps.marking.selected
+          && this.props.marking.dotColor === nextProps.marking.dotColor
+          && this.props.marking.disabled === nextProps.marking.disabled));
+      } else {
+        markingChanged = true;
+      }
+      // console.log('marking changed', markingChanged);
+      return markingChanged;
+    } else {
+      // console.log('changed', changed);
+      return !!changed;
+    }
   }
 
   render() {
@@ -71,7 +89,6 @@ class Day extends Component {
     } else if (isDisabled) {
       textStyle.push(this.style.disabledText);
     } else if (this.props.state === 'today') {
-      containerStyle.push(this.style.today);
       textStyle.push(this.style.todayText);
     }
 
@@ -79,7 +96,6 @@ class Day extends Component {
       <TouchableOpacity
         style={containerStyle}
         onPress={this.onDayPress}
-        onLongPress={this.onDayLongPress}
         activeOpacity={marking.activeOpacity}
         disabled={marking.disableTouchEvent}
       >
