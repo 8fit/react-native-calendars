@@ -64,6 +64,11 @@ LocaleConfig.locales['fr'] = {
 LocaleConfig.defaultLocale = 'fr';
 ```
 
+## E2E Testing
+
+Each date cell on a calendar can be accessed by an id. 
+The format of an id: `"react-native-calendars-test-id-DD-MM-YYYY"`. 
+
 ### Calendar
 
 <kbd>
