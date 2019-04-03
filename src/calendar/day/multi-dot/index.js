@@ -18,7 +18,8 @@ class Day extends Component {
     marking: PropTypes.any,
     onPress: PropTypes.func,
     date: PropTypes.object,
-    showIndicator: PropTypes.bool
+    showIndicator: PropTypes.bool,
+    testID: PropTypes.string
   };
 
   constructor(props) {
@@ -93,7 +94,7 @@ class Day extends Component {
       textPillStyle.push(this.style.todayPill);
     }
     return (
-      <TouchableOpacity disabled style={containerStyle} onPress={this.onDayPress}>
+      <TouchableOpacity disabled style={containerStyle} onPress={this.onDayPress} testID={this.props.testID}>
         <View style={[textPillStyle, loadingLegend]}><Text allowFontScaling={false} style={textStyle}>{String(this.props.children)}</Text></View>
         <View style={this.style.legendContainer}>
           <View style={{flexDirection: 'column'}}>{dot}</View>

@@ -17,7 +17,8 @@ class Day extends Component {
     theme: PropTypes.object,
     marking: PropTypes.any,
     onPress: PropTypes.func,
-    date: PropTypes.object
+    date: PropTypes.object,
+    testID: PropTypes.string
   };
 
   constructor(props) {
@@ -98,6 +99,7 @@ class Day extends Component {
         onPress={this.onDayPress}
         activeOpacity={marking.activeOpacity}
         disabled={marking.disableTouchEvent}
+        testID={this.props.testID}
       >
         <Text allowFontScaling={false} style={textStyle}>{String(this.props.children)}</Text>
         {dot}
